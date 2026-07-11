@@ -1,0 +1,86 @@
+name: Android CI Build
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. سحب كود المشروع
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 2. إعداد بيئة جافا
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    # 3. إعداد أداة Gradle
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
+    # 4. توليد ملف gradlew
+    - name: Generate Gradle Wrapper
+      run: gradle wrapper
+
+    # 5. إعطاء صلاحية التنفيذ
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    # 6. توليد ملفات البناء الحساسة والمفقودة بالبيانات الصحيحة لتطبيقك
+    - name: Create Missing Build Files
+      run: |
+        # توليد ملف الـ keystore الافتراضي لتخطي التوقيع
+        keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+        
+        # إنشاء المجلد إذا لم يكن موجوداً
+        mkdir -p app/
+        
+        # توليد ملف google-services.json مخصص يحتوي بدقة على معرف حزمتك com.aistudio.zesport.hymvsq
+        echo '{
+          "project_info": {
+            "project_number": "123456789",
+            "project_id": "mock-project-id",
+            "storage_bucket": "mock-project.appspot.com"
+          },
+          "client": [
+            {
+              "client_info": {
+                "mobilesdk_app_id": "1:123456789:android:mockappiddummy",
+                "android_client_info": {
+                  "package_name": "com.aistudio.zesport.hymvsq"
+                }
+              },
+              "oauth_client": [],
+              "api_key": [
+                {
+                  "current_key": "mock_AIzaSyDummyKey_Value"
+                }
+              ],
+              "services": {
+                "appinvite_service": {
+                  "status": 1
+                }
+              }
+            }
+          ],
+          "configuration_version": "1"
+        }' > app/google-services.json
+
+    # 7. بناء التطبيق
+    - name: Build with Gradle
+      run: ./gradlew assembleDebug
+
+    # 8. رفع ملف الـ APK الناتج
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
