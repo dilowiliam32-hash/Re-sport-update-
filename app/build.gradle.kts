@@ -9,12 +9,27 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
+fun getPackageNameFromGoogleServices(): String? {
+  val file = project.file("google-services.json")
+  if (file.exists()) {
+    try {
+      val content = file.readText()
+      val regex = Regex("\"package_name\"\\s*:\\s*\"([^\"]+)\"")
+      val matchResult = regex.find(content)
+      return matchResult?.groupValues?.get(1)
+    } catch (e: Exception) {
+      e.printStackTrace()
+    }
+  }
+  return null
+}
+
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.zesport.fghsqw"
+    applicationId = getPackageNameFromGoogleServices() ?: "com.aistudio.zesport.fghsqw"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
